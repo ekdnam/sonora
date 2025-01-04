@@ -73,4 +73,20 @@ func TestGenerateContent_Integration(t *testing.T) {
 			t.Errorf("Expected nil response for error case, got %v", resp)
 		}
 	})
+
+	t.Run("stream response", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+
+		prompt := "Count from 1 to 5 slowly"
+		resp, err := GenerateContentStream(ctx, model, prompt)
+
+		// Since GenerateContentStream currently returns nil, nil when successful
+		if err != nil {
+			t.Errorf("Failed to generate content stream: %v", err)
+		}
+		if resp != nil {
+			t.Errorf("Expected nil response for streaming case, got %v", resp)
+		}
+	})
 }

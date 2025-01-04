@@ -7,6 +7,7 @@ import (
 	"leo/src/utils"
 
 	"github.com/google/generative-ai-go/genai"
+	"google.golang.org/api/iterator"
 )
 
 // GenerativeModelConfig defines the configuration parameters for a generative AI model.
@@ -46,7 +47,6 @@ type GenerativeModelConfig struct {
 	TopP            float32
 	TopK            int32
 	MaxOutputTokens int32
-	SystemMessage   string
 }
 
 // GetModel initializes and configures a generative AI model with the specified parameters.
@@ -82,9 +82,22 @@ type GenerativeModelConfig struct {
 // instances to ensure consistent configuration and validation across the codebase.
 // Direct model creation should be avoided to maintain reliability.
 func GetModel(client *genai.Client, config GenerativeModelConfig) (*genai.GenerativeModel, error) {
-	if !utils.IsAllowedModel(config.ModelName) {
+	if !Constants.IsAllowedModel(config.ModelName) {
 		return nil, fmt.Errorf("invalid model name: %s. Allowed models: %v",
-			config.ModelName, utils.GetAllowedModels())
+			config.ModelName, Constants.GetAllModels())
+	}
+	// Add validation before creating model
+	if config.Temperature < Constants.MinTemperature || config.Temperature > Constants.MaxTemperature {
+		return nil, fmt.Errorf("temperature must be between %.1f and %.1f", Constants.MinTemperature, Constants.MaxTemperature)
+	}
+	if config.TopP < Constants.MinTopP || config.TopP > Constants.MaxTopP {
+		return nil, fmt.Errorf("topP must be between %.1f and %.1f", Constants.MinTopP, Constants.MaxTopP)
+	}
+	if config.TopK < Constants.MinTopK || config.TopK > Constants.MaxTopK {
+		return nil, fmt.Errorf("topK must be between %d and %d", Constants.MinTopK, Constants.MaxTopK)
+	}
+	if config.MaxOutputTokens < Constants.MinMaxOutputTokens || config.MaxOutputTokens > Constants.MaxMaxOutputTokens {
+		return nil, fmt.Errorf("maxOutputTokens must be between %d and %d", Constants.MinMaxOutputTokens, Constants.MaxMaxOutputTokens)
 	}
 	model := client.GenerativeModel(config.ModelName)
 	model.SetTemperature(config.Temperature)
@@ -132,6 +145,21 @@ func GenerateContent(ctx context.Context, model *genai.GenerativeModel, prompt s
 	return resp, nil
 }
 
+func GenerateContentStream(ctx context.Context, model *genai.GenerativeModel, prompt string) (*genai.GenerateContentResponse, error) {
+	iter := model.GenerateContentStream(ctx, genai.Text(prompt))
+	for {
+		resp, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		utils.PrintResponse(resp)
+	}
+	return nil, nil
+}
+
 // GeneratePlan creates a structured learning plan using a generative AI model.
 //
 // This function leverages a generative model to create a customized learning plan
@@ -156,7 +184,7 @@ func GenerateContent(ctx context.Context, model *genai.GenerativeModel, prompt s
 //	    log.Fatalf("Failed to generate plan: %v", err)
 //	}
 //
-// Note: This function performs validation on the level parameter using the utils.IsAllowedLevel
+// Note: This function performs validation on the level parameter using the core.IsAllowedLevel
 // function to ensure only supported difficulty levels are used. The system message used for
 // generation is defined in prompts.GeneratePlanPrompt.
 func GeneratePlan(ctx context.Context, model *genai.GenerativeModel, topic string, level string) (*genai.GenerateContentResponse, error) {
@@ -165,9 +193,9 @@ func GeneratePlan(ctx context.Context, model *genai.GenerativeModel, topic strin
 		Parts: []genai.Part{genai.Text(systemMessage)},
 		Role:  "user",
 	}
-	if !utils.IsAllowedLevel(level) {
+	if !Constants.IsAllowedLevel(level) {
 		return nil, fmt.Errorf("invalid level: %s. Allowed levels: %v",
-			level, utils.GetAllowedLevels())
+			level, Constants.GetAllLevels())
 	}
 	prompt := fmt.Sprintf("Topic: %s\nLevel: %s", topic, level)
 	return GenerateContent(ctx, model, prompt)

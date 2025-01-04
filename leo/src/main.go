@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"leo/src/core"
 	"leo/src/utils"
 	"log"
@@ -40,17 +39,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	printResponse(resp)
-
-}
-
-func printResponse(resp *genai.GenerateContentResponse) {
-	for _, cand := range resp.Candidates {
-		if cand.Content != nil {
-			for _, part := range cand.Content.Parts {
-				fmt.Println(part)
-			}
-		}
-	}
-	fmt.Println("---")
+	utils.PrintResponse(resp)
 }
