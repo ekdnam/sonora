@@ -36,6 +36,7 @@ func TestLoadConfig_FileNotFound(t *testing.T) {
 	if apiKey != "" {
 		t.Errorf("Expected empty string for non-existent file, got %q", apiKey)
 	}
+	log.Printf("Error: %v", err)
 }
 
 func TestLoadConfig_APIKeyNotFound(t *testing.T) {
