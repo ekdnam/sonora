@@ -202,7 +202,7 @@ func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic stri
 		return nil, err
 	}
 	stringResponse := utils.ConvertFromResponseToString(resp)
-	validateTopicResponse, err := utils.ConvertFromStringToValidateTopicResponse(stringResponse[0])
+	validateTopicResponse, err := utils.ParseStringJsonResponse[TypeLeo.ValidateTopicResponse](stringResponse[0])
 	if err != nil {
 		return nil, err
 	}

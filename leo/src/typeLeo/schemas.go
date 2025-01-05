@@ -19,7 +19,7 @@ var AlternateTopicSingletonSchema = &genai.Schema{
 		"id":      {Type: genai.TypeInteger},
 		"subject": {Type: genai.TypeString},
 	},
-	Required: []string{"is_valid", "reason"},
+	Required: []string{"id", "subject"},
 }
 
 // AlternateTopicsArraySchema defines an array of alternative topic suggestions

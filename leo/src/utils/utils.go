@@ -203,12 +203,48 @@ func ConvertFromResponseToString(resp *genai.GenerateContentResponse) []string {
 	return output
 }
 
-// ConvertFromStringToValidateTopicResponse converts a JSON string to ValidateTopicResponse
-func ConvertFromStringToValidateTopicResponse(jsonStr string) (*TypeLeo.ValidateTopicResponse, error) {
-	var response TypeLeo.ValidateTopicResponse
+// ParseStringJsonResponse parses a JSON string into a typed struct.
+//
+// This generic function provides type-safe JSON deserialization for any struct type T.
+// It takes a JSON string as input and returns a pointer to the deserialized struct
+// of type T. The function uses Go's built-in json.Unmarshal under the hood and provides
+// proper error handling.
+//
+// Type Parameters:
+//   - T: The target struct type to deserialize the JSON into. Must satisfy the empty
+//     interface (any).
+//
+// Args:
+//   - jsonStr: A string containing valid JSON data that matches the structure of T.
+//
+// Returns:
+//   - *T: A pointer to the deserialized struct of type T.
+//   - error: An error if JSON parsing fails, or nil on success.
+//
+// Example usage:
+//
+//	type Person struct {
+//	    Name string `json:"name"`
+//	    Age  int    `json:"age"`
+//	}
+//
+//	jsonStr := `{"name": "Alice", "age": 30}`
+//	person, err := ParseStringJsonResponse[Person](jsonStr)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Printf("Name: %s, Age: %d\n", person.Name, person.Age)
+//
+// Note: This function assumes the input JSON string is well-formed and matches
+// the target type T. If the JSON structure doesn't match T, an error will be returned.
+func ParseStringJsonResponse[T any](jsonStr string) (*T, error) {
+	var response T
 	err := json.Unmarshal([]byte(jsonStr), &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 	return &response, nil
 }
+
+// Example usage of the old function can be replaced with:
+// response, err := ConvertFromStringToResponse[TypeLeo.ValidateTopicResponse](jsonStr)

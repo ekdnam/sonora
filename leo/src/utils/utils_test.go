@@ -187,7 +187,7 @@ func TestConvertFromResponseToString(t *testing.T) {
 	}
 }
 
-func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
+func TestParseValidateTopicResponseJSON(t *testing.T) {
 	tests := []struct {
 		name    string
 		jsonStr string
@@ -196,7 +196,7 @@ func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
 	}{
 		{
 			name:    "valid response - true",
-			jsonStr: `{"response": true, "reason": "Valid topic for a course"}`,
+			jsonStr: `{"is_valid": true, "reason": "Valid topic for a course"}`,
 			want: &TypeLeo.ValidateTopicResponse{
 				IsValid: true,
 				Reason:  "Valid topic for a course",
@@ -205,7 +205,7 @@ func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
 		},
 		{
 			name:    "valid response - false",
-			jsonStr: `{"response": false, "reason": "Topic too broad"}`,
+			jsonStr: `{"is_valid": false, "reason": "Topic too broad"}`,
 			want: &TypeLeo.ValidateTopicResponse{
 				IsValid: false,
 				Reason:  "Topic too broad",
@@ -220,7 +220,7 @@ func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
 		},
 		{
 			name:    "missing fields",
-			jsonStr: `{"response": true}`,
+			jsonStr: `{"is_valid": true}`,
 			want: &TypeLeo.ValidateTopicResponse{
 				IsValid: true,
 				Reason:  "",
@@ -237,7 +237,7 @@ func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ConvertFromStringToValidateTopicResponse(tc.jsonStr)
+			got, err := ParseStringJsonResponse[TypeLeo.ValidateTopicResponse](tc.jsonStr)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("ConvertFromStringToValidateTopicResponse() error = %v, wantErr %v", err, tc.wantErr)
 				return
