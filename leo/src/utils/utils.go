@@ -246,5 +246,47 @@ func ParseStringJsonResponse[T any](jsonStr string) (*T, error) {
 	return &response, nil
 }
 
-// Example usage of the old function can be replaced with:
-// response, err := ConvertFromStringToResponse[TypeLeo.ValidateTopicResponse](jsonStr)
+// ParseJsonArrayResponse parses a JSON string into a slice of typed structs.
+//
+// This generic function provides type-safe JSON deserialization for arrays/slices of any struct type T.
+// It takes a JSON string representing an array as input and returns a slice of the deserialized type T.
+// The function uses Go's built-in json.Unmarshal under the hood and provides proper error handling.
+//
+// Type Parameters:
+//   - T: The target struct type to deserialize each JSON array element into. Must satisfy the empty
+//     interface (any).
+//
+// Args:
+//   - jsonStr: A string containing valid JSON array data where each element matches the structure of T.
+//
+// Returns:
+//   - []T: A slice containing the deserialized structs of type T.
+//   - error: An error if JSON parsing fails, or nil on success.
+//
+// Example usage:
+//
+//	type Topic struct {
+//	    Name string `json:"name"`
+//	    Description string `json:"description"`
+//	}
+//
+//	jsonStr := `[{"name": "Physics", "description": "Study of matter"},
+//	             {"name": "Chemistry", "description": "Study of substances"}]`
+//	topics, err := ParseJsonArrayResponse[Topic](jsonStr)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, topic := range topics {
+//	    fmt.Printf("Topic: %s - %s\n", topic.Name, topic.Description)
+//	}
+//
+// Note: This function assumes the input JSON string represents a well-formed array where each element
+// matches the target type T. If the JSON structure doesn't match, an error will be returned.
+func ParseJsonArrayResponse[T any](jsonStr string) ([]T, error) {
+	var response []T
+	err := json.Unmarshal([]byte(jsonStr), &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON array response: %v", err)
+	}
+	return response, nil
+}

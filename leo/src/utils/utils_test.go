@@ -254,3 +254,65 @@ func TestParseValidateTopicResponseJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestParseJsonArrayResponse(t *testing.T) {
+	tests := []struct {
+		name    string
+		jsonStr string
+		want    []TypeLeo.ValidateTopicResponse
+		wantErr bool
+	}{
+		{
+			name: "valid array of responses",
+			jsonStr: `[
+				{"is_valid": true, "reason": "Valid topic 1"},
+				{"is_valid": false, "reason": "Invalid topic 2"}
+			]`,
+			want: []TypeLeo.ValidateTopicResponse{
+				{IsValid: true, Reason: "Valid topic 1"},
+				{IsValid: false, Reason: "Invalid topic 2"},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "empty array",
+			jsonStr: `[]`,
+			want:    []TypeLeo.ValidateTopicResponse{},
+			wantErr: false,
+		},
+		{
+			name:    "invalid json",
+			jsonStr: `[{invalid json}]`,
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "not an array",
+			jsonStr: `{"is_valid": true, "reason": "Single object"}`,
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseJsonArrayResponse[TypeLeo.ValidateTopicResponse](tc.jsonStr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ParseJsonArrayResponse() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if tc.wantErr {
+				return
+			}
+			if len(got) != len(tc.want) {
+				t.Errorf("ParseJsonArrayResponse() got %d elements, want %d elements", len(got), len(tc.want))
+				return
+			}
+			for i := range got {
+				if got[i].IsValid != tc.want[i].IsValid || got[i].Reason != tc.want[i].Reason {
+					t.Errorf("Element %d = %+v, want %+v", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
