@@ -2,7 +2,11 @@ package utils
 
 import (
 	"fmt"
+	TypeLeo "leo/src/typeLeo"
 	"os"
+	"strings"
+
+	"strconv"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/joho/godotenv"
@@ -34,13 +38,166 @@ func LoadConfig(path string, key_name string) (string, error) {
 	return os.Getenv(key_name), nil
 }
 
+// ValidateConfig ensures that the provided GenerativeModelConfig parameters are within acceptable ranges.
+//
+// This function validates temperature, topP, topK, and maxOutputTokens against predefined constants.
+// Each parameter must fall within its respective min/max range to be considered valid.
+//
+// Args:
+//
+//	config: A GenerativeModelConfig struct containing the model parameters to validate.
+//
+// Returns:
+//
+//	error: nil if all parameters are valid, or an error describing which parameter is out of range.
+func ValidateConfig(config TypeLeo.GenerativeModelConfig) error {
+	if config.Temperature < TypeLeo.Constants.MinTemperature || config.Temperature > TypeLeo.Constants.MaxTemperature {
+		return fmt.Errorf("temperature must be between %.1f and %.1f", TypeLeo.Constants.MinTemperature, TypeLeo.Constants.MaxTemperature)
+	}
+	if config.TopP < TypeLeo.Constants.MinTopP || config.TopP > TypeLeo.Constants.MaxTopP {
+		return fmt.Errorf("topP must be between %.1f and %.1f", TypeLeo.Constants.MinTopP, TypeLeo.Constants.MaxTopP)
+	}
+	if config.TopK < TypeLeo.Constants.MinTopK || config.TopK > TypeLeo.Constants.MaxTopK {
+		return fmt.Errorf("topK must be between %d and %d", TypeLeo.Constants.MinTopK, TypeLeo.Constants.MaxTopK)
+	}
+	if config.MaxOutputTokens < TypeLeo.Constants.MinMaxOutputTokens || config.MaxOutputTokens > TypeLeo.Constants.MaxMaxOutputTokens {
+		return fmt.Errorf("maxOutputTokens must be between %d and %d", TypeLeo.Constants.MinMaxOutputTokens, TypeLeo.Constants.MaxMaxOutputTokens)
+	}
+	return nil
+}
+
+// PrintResponse prints the content of a GenerateContentResponse to standard output.
+//
+// Iterates through all candidates in the response and prints their content parts.
+// A separator ("---") is printed after all content has been output.
+//
+// Args:
+//
+//	resp: A pointer to a GenerateContentResponse containing the content to print.
 func PrintResponse(resp *genai.GenerateContentResponse) {
+	outputs := ConvertFromResponseToString(resp)
+	for idx, output := range outputs {
+		fmt.Printf("[%d] %s\n", idx, output)
+		fmt.Println("---")
+	}
+}
+
+// IsAllowedModel checks if a given model name is in the list of allowed models.
+//
+// Args:
+//
+//	modelName: The name of the model to check.
+//
+// Returns:
+//
+//	bool: true if the model is allowed, false otherwise.
+func IsAllowedModel(modelName string) bool {
+	return TypeLeo.Constants.AllowedModels[modelName]
+}
+
+// IsAllowedLevel checks if a given difficulty level is in the list of allowed levels.
+//
+// Args:
+//
+//	level: The difficulty level to check.
+//
+// Returns:
+//
+//	bool: true if the level is allowed, false otherwise.
+func IsAllowedLevel(level string) bool {
+	return TypeLeo.Constants.AllowedLevels[level]
+}
+
+// GetAllModels returns a slice containing all allowed model names.
+//
+// Returns:
+//
+//	[]string: A slice containing all allowed model names from the Constants.AllowedModels map.
+func GetAllModels() []string {
+	models := make([]string, 0, len(TypeLeo.Constants.AllowedModels))
+	for model := range TypeLeo.Constants.AllowedModels {
+		models = append(models, model)
+	}
+	return models
+}
+
+// GetAllLevels returns a slice containing all allowed difficulty levels.
+//
+// Returns:
+//
+//	[]string: A slice containing all allowed difficulty levels from the Constants.AllowedLevels map.
+func GetAllLevels() []string {
+	levels := make([]string, 0, len(TypeLeo.Constants.AllowedLevels))
+	for level := range TypeLeo.Constants.AllowedLevels {
+		levels = append(levels, level)
+	}
+	return levels
+}
+
+// ConvertFromStringToType converts a string to the specified data type.
+//
+// Args:
+//   - content: The string to convert
+//   - datatype: The target data type ("string", "int", "float", "bool")
+//
+// Returns:
+//   - interface{}: The converted value
+//   - error: An error if the conversion fails
+func ConvertFromStringToType(content string, datatype string) (interface{}, error) {
+	switch datatype {
+	case "string":
+		return content, nil
+	case "int":
+		return strconv.Atoi(content)
+	case "float":
+		return strconv.ParseFloat(content, 64)
+	case "bool":
+		return strconv.ParseBool(content)
+	default:
+		return nil, fmt.Errorf("unsupported data type: %s", datatype)
+	}
+}
+
+// ConvertFromResponseToString converts a Gemini API response into a slice of strings.
+//
+// This utility function extracts the text content from a GenerateContentResponse object,
+// which contains candidates with potentially multiple content parts. It flattens the
+// hierarchical response structure into a simple string slice for easier consumption
+// by client code.
+//
+// Args:
+//   - resp: A pointer to genai.GenerateContentResponse containing the model's response
+//
+// Returns:
+//   - []string: A slice containing the string representation of each content part
+//     from all valid candidates. Returns an empty slice if the response is invalid
+//     or contains no content.
+//
+// Example usage:
+//
+//	resp, _ := model.GenerateContent(ctx, prompt)
+//	textParts := ConvertFromResponseToString(resp)
+//	for _, text := range textParts {
+//	    fmt.Println(text)
+//	}
+//
+// Note: This function safely handles nil checks for both candidates and their content,
+// making it robust for production use. The output maintains the original order of
+// candidates and their parts.
+func ConvertFromResponseToString(resp *genai.GenerateContentResponse) []string {
+	if resp == nil {
+		return []string{}
+	}
+	output := []string{}
 	for _, cand := range resp.Candidates {
 		if cand.Content != nil {
+			var current string
 			for _, part := range cand.Content.Parts {
-				fmt.Println(part)
+				current += fmt.Sprint(part) + " "
 			}
+			current = strings.TrimSpace(current)
+			output = append(output, current)
 		}
 	}
-	fmt.Println("---")
+	return output
 }

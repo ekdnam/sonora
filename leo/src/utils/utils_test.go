@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/google/generative-ai-go/genai"
 )
 
 func createTempEnvFile(t *testing.T) (string, func()) {
@@ -48,5 +50,138 @@ func TestLoadConfig_APIKeyNotFound(t *testing.T) {
 	}
 	if apiKey != "" {
 		t.Fatalf("Expected empty string for non-existent file, got %q", apiKey)
+	}
+}
+
+func TestConvertFromStringToType(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		datatype string
+		want     interface{}
+		wantErr  bool
+	}{
+		{"string conversion", "hello", "string", "hello", false},
+		{"int conversion", "123", "int", 123, false},
+		{"float conversion", "3.14", "float", 3.14, false},
+		{"bool conversion true", "true", "bool", true, false},
+		{"bool conversion false", "false", "bool", false, false},
+		{"invalid int", "abc", "int", nil, true},
+		{"invalid float", "xyz", "float", nil, true},
+		{"invalid bool", "notbool", "bool", nil, true},
+		{"unsupported type", "test", "array", nil, true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ConvertFromStringToType(tc.content, tc.datatype)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ConvertFromStringToType() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if !tc.wantErr && got != tc.want {
+				t.Errorf("ConvertFromStringToType() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestConvertFromResponseToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		response *genai.GenerateContentResponse
+		want     []string
+	}{
+		{
+			name: "normal response with single candidate and part",
+			response: &genai.GenerateContentResponse{
+				Candidates: []*genai.Candidate{
+					{
+						Content: &genai.Content{
+							Parts: []genai.Part{
+								genai.Text("Hello, world!"),
+							},
+						},
+					},
+				},
+			},
+			want: []string{"Hello, world!"},
+		},
+		{
+			name: "multiple candidates with multiple parts",
+			response: &genai.GenerateContentResponse{
+				Candidates: []*genai.Candidate{
+					{
+						Content: &genai.Content{
+							Parts: []genai.Part{
+								genai.Text("First part"),
+								genai.Text("Second part"),
+							},
+						},
+					},
+					{
+						Content: &genai.Content{
+							Parts: []genai.Part{
+								genai.Text("Third part"),
+							},
+						},
+					},
+				},
+			},
+			want: []string{"First part Second part", "Third part"},
+		},
+		{
+			name:     "nil response",
+			response: nil,
+			want:     []string{},
+		},
+		{
+			name: "empty candidates",
+			response: &genai.GenerateContentResponse{
+				Candidates: []*genai.Candidate{},
+			},
+			want: []string{},
+		},
+		{
+			name: "nil content in candidate",
+			response: &genai.GenerateContentResponse{
+				Candidates: []*genai.Candidate{
+					{Content: nil},
+				},
+			},
+			want: []string{},
+		},
+		{
+			name: "mixed valid and nil content",
+			response: &genai.GenerateContentResponse{
+				Candidates: []*genai.Candidate{
+					{Content: nil},
+					{
+						Content: &genai.Content{
+							Parts: []genai.Part{
+								genai.Text("Valid content"),
+							},
+						},
+					},
+					{Content: nil},
+				},
+			},
+			want: []string{"Valid content"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ConvertFromResponseToString(tc.response)
+			if len(got) != len(tc.want) {
+				t.Errorf("ConvertFromResponseToString() got %d elements, want %d elements", len(got), len(tc.want))
+				return
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("ConvertFromResponseToString()[%d] = %v, want %v", i, got[i], tc.want[i])
+				}
+			}
+		})
 	}
 }
