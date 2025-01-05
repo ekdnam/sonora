@@ -11,10 +11,11 @@ Give output in the form of a JSON array with the schema {"id": int, "subject": s
 1. While recommending these subjects, be as closely related to the original topic as possible. 
 2. Recommend exactly 3 subjects.
 3. The subjects should be something on which a ~10 week course can be created.
-4. The topic should have established concepts, principles and theories. 
-5. The topic can be split into ~10 major modules.
+4. The subjects should have established concepts, principles and theories. 
+5. The subjects can be split into ~10 major modules.
 6. It should cover well-defined subfield within a large domain.
-7. The topic should not be too generic or too broad.
+7. The subjects should not be too generic or too broad.
+8. If the give topic is nonsensical, return something among the following: "Linear Algebra", "Data Structures", "Computer Architecture", "Object Oriented Programming", "Calculus", "Probability and Statistics", "Digital Image Processing", "Plant Biology"
 
 # EXAMPLES
 
