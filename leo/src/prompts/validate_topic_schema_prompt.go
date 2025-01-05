@@ -16,7 +16,7 @@ How to determine if a course can be made on a topic:
 3. The topic should have established concepts, principles and theories. 
 4. The topic can be split into ~10 major modules.
 5. It should cover well-defined subfield within a large domain.
-2. The topic should not be too generic or too broad.
+6. The topic should not be too generic or too broad.
 
 If any of these guidelines are not covered, return {"is_valid": false, "reason": <REASON>}. Else, return {"is_valid": true, "reason": <REASON>}
 

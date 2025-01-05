@@ -9,6 +9,7 @@ var ValidateTopicSchema = &genai.Schema{
 		"is_valid": {Type: genai.TypeBoolean},
 		"reason":   {Type: genai.TypeString},
 	},
+	Required: []string{"is_valid", "reason"},
 }
 
 // AlternateTopicSingletonSchema wraps the properties into a single object schema
@@ -18,6 +19,7 @@ var AlternateTopicSingletonSchema = &genai.Schema{
 		"id":      {Type: genai.TypeInteger},
 		"subject": {Type: genai.TypeString},
 	},
+	Required: []string{"is_valid", "reason"},
 }
 
 // AlternateTopicsArraySchema defines an array of alternative topic suggestions
