@@ -150,3 +150,97 @@ func TestValidateTopic_Integration(t *testing.T) {
 		})
 	}
 }
+
+func TestRecommendAlternateTopics_Integration(t *testing.T) {
+	testCases := []struct {
+		name          string
+		topic         string
+		expectedCount int
+		validateFn    func([]TypeLeo.AlternateTopicSuggestionResponse) error
+	}{
+		{
+			name:          "broad topic - computers",
+			topic:         "computers",
+			expectedCount: 3,
+			validateFn: func(suggestions []TypeLeo.AlternateTopicSuggestionResponse) error {
+				// Validate that IDs are 1-3
+				for i, suggestion := range suggestions {
+					if suggestion.ID != i+1 {
+						return fmt.Errorf("expected ID %d, got %d", i+1, suggestion.ID)
+					}
+					if suggestion.Subject == "" {
+						return fmt.Errorf("empty subject string found at index %d", i)
+					}
+				}
+				return nil
+			},
+		},
+		{
+			name:          "specific topic - quantum computing",
+			topic:         "quantum computing",
+			expectedCount: 3,
+			validateFn: func(suggestions []TypeLeo.AlternateTopicSuggestionResponse) error {
+				seen := make(map[string]bool)
+				for _, suggestion := range suggestions {
+					if suggestion.Subject == "" {
+						return fmt.Errorf("empty topic string found")
+					}
+					// Check for duplicates
+					if seen[suggestion.Subject] {
+						return fmt.Errorf("duplicate topic found: %s", suggestion.Subject)
+					}
+					seen[suggestion.Subject] = true
+				}
+				return nil
+			},
+		},
+		{
+			name:          "nonsense topic",
+			topic:         "xyzabc123",
+			expectedCount: 3,
+			validateFn: func(suggestions []TypeLeo.AlternateTopicSuggestionResponse) error {
+				// Even for nonsense topics, we should get valid STEM suggestions
+				for _, suggestion := range suggestions {
+					if suggestion.Subject == "" {
+						return fmt.Errorf("empty topic string found")
+					}
+					if suggestion.Subject == "xyzabc123" {
+						return fmt.Errorf("model returned the nonsense topic")
+					}
+				}
+				return nil
+			},
+		},
+	}
+
+	for i, tc := range testCases {
+		addTestDelay(t, i == 0) // Skip delay for first test
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("Testing topic: %s", tc.topic)
+			model, ctx, cancel := setupTestModel(t)
+			defer cancel()
+
+			suggestions, err := RecommendAlternateTopics(ctx, model, tc.topic)
+
+			// Log the response for debugging
+			t.Logf("Topic: %s, Suggestions: %+v", tc.topic, suggestions)
+
+			if err != nil {
+				t.Fatalf("Failed to get alternate topics: %v", err)
+			}
+
+			// Validate response length
+			if len(suggestions) != tc.expectedCount {
+				t.Errorf("Expected %d suggestions, got %d", tc.expectedCount, len(suggestions))
+			}
+
+			// Run custom validation function
+			if err := tc.validateFn(suggestions); err != nil {
+				t.Errorf("Validation failed: %v", err)
+			}
+
+			t.Logf("Completed testing topic: %s", tc.topic)
+		})
+	}
+}
