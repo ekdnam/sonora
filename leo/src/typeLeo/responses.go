@@ -7,10 +7,10 @@ type ValidateTopicResponse struct {
 }
 
 // AlternateTopicSuggestion represents a single alternative topic suggestion
-type AlternateTopicSuggestion struct {
+type AlternateTopicSuggestionResponse struct {
 	ID      int    `json:"id"`
 	Subject string `json:"subject"`
 }
 
 // AlternateTopicsResponse represents an array of alternative topic suggestions
-type AlternateTopicsResponse []AlternateTopicSuggestion
+type AlternateTopicSuggestionArrayResponse []AlternateTopicSuggestionResponse

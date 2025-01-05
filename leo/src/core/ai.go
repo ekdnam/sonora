@@ -209,7 +209,38 @@ func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic stri
 	return validateTopicResponse, nil
 }
 
-func RecommendAlternateTopics(ctx context.Context, model *genai.GenerativeModel, topic string) (*genai.GenerateContentResponse, error) {
+// RecommendAlternateTopics suggests alternative course topics when the original topic is unsuitable.
+//
+// This function uses a generative AI model to recommend 3 alternative topics that are:
+// 1. Closely related to the original topic
+// 2. Specific enough to form the basis of a ~10 week university course
+// 3. Have established concepts, principles and well-defined subfields
+//
+// The function configures the model to return a structured JSON array response containing
+// exactly 3 topic suggestions, each with an ID and subject name. The response schema is
+// strictly enforced to ensure consistent output formatting.
+//
+// Args:
+//   - ctx: Context for managing timeouts and cancellation
+//   - model: A configured genai.GenerativeModel instance
+//   - topic: The original unsuitable topic to find alternatives for
+//
+// Returns:
+//   - []TypeLeo.AlternateTopicSuggestion: Array of 3 alternative topic suggestions
+//   - error: Any error encountered during the recommendation process
+//
+// Example usage:
+//
+//	topics, err := RecommendAlternateTopics(ctx, model, "Computers")
+//	if err != nil {
+//	    log.Fatalf("Failed to get recommendations: %v", err)
+//	}
+//	// Result: [{1 "Data Structures"} {2 "Computer Architecture"} {3 "Object Oriented Programming"}]
+//
+// Note: The function uses a predefined system prompt (RecommendAlternateTopicsPrompt)
+// that contains specific criteria and example responses. The model is configured to
+// return JSON to ensure consistent parsing of results.
+func RecommendAlternateTopics(ctx context.Context, model *genai.GenerativeModel, topic string) ([]TypeLeo.AlternateTopicSuggestionResponse, error) {
 	systemMessage := prompts.RecommendAlternateTopicsPrompt
 	model.ResponseMIMEType = "application/json"
 	model.ResponseSchema = TypeLeo.AlternateTopicsArraySchema
@@ -218,5 +249,14 @@ func RecommendAlternateTopics(ctx context.Context, model *genai.GenerativeModel,
 		Role:  "user",
 	}
 	prompt := fmt.Sprintf("Topic: %s\n", topic)
-	return GenerateContent(ctx, model, prompt)
+	response, err := GenerateContent(ctx, model, prompt)
+	if err != nil {
+		return nil, fmt.Errorf("error while recommending alternate topics: %v", err)
+	}
+	stringResponse := utils.ConvertFromResponseToString(response)
+	alternateTopics, err := utils.ParseJsonArrayResponse[TypeLeo.AlternateTopicSuggestionResponse](stringResponse[0])
+	if err != nil {
+		return nil, fmt.Errorf("error while deserializing alternate topics from string response: %v\nString response: \"%s\"", err, stringResponse[0])
+	}
+	return alternateTopics, nil
 }
