@@ -4,19 +4,20 @@ import "github.com/google/generative-ai-go/genai"
 
 // ValidateTopicSchema defines the schema for validating if a topic is suitable for course creation
 var ValidateTopicSchema = &genai.Schema{
-	Type: genai.TypeBoolean,
-}
-
-// AlternateTopicSingletonObject defines the properties for a single alternative topic suggestion
-var AlternateTopicSingletonObject = map[string]*genai.Schema{
-	"id":      {Type: genai.TypeInteger},
-	"subject": {Type: genai.TypeString},
+	Type: genai.TypeObject,
+	Properties: map[string]*genai.Schema{
+		"is_valid": {Type: genai.TypeBoolean},
+		"reason":   {Type: genai.TypeString},
+	},
 }
 
 // AlternateTopicSingletonSchema wraps the properties into a single object schema
 var AlternateTopicSingletonSchema = &genai.Schema{
-	Type:       genai.TypeObject,
-	Properties: AlternateTopicSingletonObject,
+	Type: genai.TypeObject,
+	Properties: map[string]*genai.Schema{
+		"id":      {Type: genai.TypeInteger},
+		"subject": {Type: genai.TypeString},
+	},
 }
 
 // AlternateTopicsArraySchema defines an array of alternative topic suggestions

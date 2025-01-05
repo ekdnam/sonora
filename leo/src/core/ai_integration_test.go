@@ -119,13 +119,13 @@ func TestValidateTopic_Integration(t *testing.T) {
 
 	testCases := []struct {
 		topic string
-		state bool
+		state *TypeLeo.ValidateTopicResponse
 	}{
-		{"computers", false},
-		{"thermodynamics", true},
-		{"physics", false},
-		{"nonsense_1", false},
-		{"nonsense_2", false},
+		{"computers", &TypeLeo.ValidateTopicResponse{IsValid: false, Reason: "Reason 1"}},
+		{"thermodynamics", &TypeLeo.ValidateTopicResponse{IsValid: true, Reason: "Reason 2"}},
+		{"physics", &TypeLeo.ValidateTopicResponse{IsValid: false, Reason: "Reason 3"}},
+		{"nonsense_1", &TypeLeo.ValidateTopicResponse{IsValid: false, Reason: "Reason 4"}},
+		{"nonsense_2", &TypeLeo.ValidateTopicResponse{IsValid: false, Reason: "Reason 5"}},
 	}
 
 	for i, tc := range testCases {
@@ -136,24 +136,15 @@ func TestValidateTopic_Integration(t *testing.T) {
 			model, ctx, cancel := setupTestModel(t)
 			defer cancel()
 			resp, err := ValidateTopic(ctx, model, tc.topic)
-
+			t.Logf("Topic: %s, Response: %v, Reason: %s", tc.topic, resp.IsValid, resp.Reason)
 			if err != nil {
 				t.Errorf("Failed to generate content schema: %v", err)
 			}
 			if resp == nil {
 				t.Errorf("Expected non-nil response, got nil")
 			}
-			stringResponse := utils.ConvertFromResponseToString(resp)
-			if len(stringResponse) == 0 {
-				t.Errorf("Expected non-empty response, got empty")
-			}
-			t.Logf("Response: %v", stringResponse)
-			boolResponse, err := utils.ConvertFromStringToType(stringResponse[0], "bool")
-			if err != nil {
-				t.Errorf("Error while converting from string to bool for %s", stringResponse)
-			}
-			if boolResponse != tc.state {
-				t.Errorf("Topic %s : Expected - %v, got %v", tc.topic, tc.state, boolResponse)
+			if resp.IsValid != tc.state.IsValid {
+				t.Errorf("Expected response %v, got %v", tc.state.IsValid, resp.IsValid)
 			}
 			t.Logf("Completed testing topic: %s", tc.topic)
 		})

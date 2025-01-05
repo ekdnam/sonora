@@ -188,7 +188,7 @@ func GeneratePlan(ctx context.Context, model *genai.GenerativeModel, topic strin
 // Note: The function uses a predefined system prompt (DetermineIfCourseCanBeMadeOnTopicPrompt)
 // that contains specific evaluation criteria and example responses. The model is configured
 // to return JSON to ensure consistent parsing of results.
-func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic string) (*genai.GenerateContentResponse, error) {
+func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic string) (*TypeLeo.ValidateTopicResponse, error) {
 	systemMessage := prompts.ValidateTopicPrompt
 	model.ResponseMIMEType = "application/json"
 	model.ResponseSchema = TypeLeo.ValidateTopicSchema
@@ -197,7 +197,16 @@ func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic stri
 		Role:  "user",
 	}
 	prompt := fmt.Sprintf("Topic: %s\n", topic)
-	return GenerateContent(ctx, model, prompt)
+	resp, err := GenerateContent(ctx, model, prompt)
+	if err != nil {
+		return nil, err
+	}
+	stringResponse := utils.ConvertFromResponseToString(resp)
+	validateTopicResponse, err := utils.ConvertFromStringToValidateTopicResponse(stringResponse[0])
+	if err != nil {
+		return nil, err
+	}
+	return validateTopicResponse, nil
 }
 
 func RecommendAlternateTopics(ctx context.Context, model *genai.GenerativeModel, topic string) (*genai.GenerateContentResponse, error) {
