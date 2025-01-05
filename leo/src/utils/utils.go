@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	TypeLeo "leo/src/typeLeo"
 	"os"
@@ -200,4 +201,14 @@ func ConvertFromResponseToString(resp *genai.GenerateContentResponse) []string {
 		}
 	}
 	return output
+}
+
+// ConvertFromStringToValidateTopicResponse converts a JSON string to ValidateTopicResponse
+func ConvertFromStringToValidateTopicResponse(jsonStr string) (*TypeLeo.ValidateTopicResponse, error) {
+	var response TypeLeo.ValidateTopicResponse
+	err := json.Unmarshal([]byte(jsonStr), &response)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse JSON response: %v", err)
+	}
+	return &response, nil
 }

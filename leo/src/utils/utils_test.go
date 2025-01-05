@@ -1,6 +1,7 @@
 package utils
 
 import (
+	TypeLeo "leo/src/typeLeo"
 	"log"
 	"os"
 	"testing"
@@ -181,6 +182,74 @@ func TestConvertFromResponseToString(t *testing.T) {
 				if got[i] != tc.want[i] {
 					t.Errorf("ConvertFromResponseToString()[%d] = %v, want %v", i, got[i], tc.want[i])
 				}
+			}
+		})
+	}
+}
+
+func TestConvertFromStringToValidateTopicResponse(t *testing.T) {
+	tests := []struct {
+		name    string
+		jsonStr string
+		want    *TypeLeo.ValidateTopicResponse
+		wantErr bool
+	}{
+		{
+			name:    "valid response - true",
+			jsonStr: `{"response": true, "reason": "Valid topic for a course"}`,
+			want: &TypeLeo.ValidateTopicResponse{
+				IsValid: true,
+				Reason:  "Valid topic for a course",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "valid response - false",
+			jsonStr: `{"response": false, "reason": "Topic too broad"}`,
+			want: &TypeLeo.ValidateTopicResponse{
+				IsValid: false,
+				Reason:  "Topic too broad",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "invalid json",
+			jsonStr: `{invalid json}`,
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "missing fields",
+			jsonStr: `{"response": true}`,
+			want: &TypeLeo.ValidateTopicResponse{
+				IsValid: true,
+				Reason:  "",
+			},
+			wantErr: false,
+		},
+		{
+			name:    "empty string",
+			jsonStr: "",
+			want:    nil,
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ConvertFromStringToValidateTopicResponse(tc.jsonStr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ConvertFromStringToValidateTopicResponse() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
+			if tc.wantErr {
+				return
+			}
+			if got.IsValid != tc.want.IsValid {
+				t.Errorf("IsValid = %v, want %v", got.IsValid, tc.want.IsValid)
+			}
+			if got.Reason != tc.want.Reason {
+				t.Errorf("Reason = %v, want %v", got.Reason, tc.want.Reason)
 			}
 		})
 	}
