@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"leo/src/core"
+	TypeLeo "leo/src/typeLeo"
 	"leo/src/utils"
 	"log"
 
@@ -23,7 +24,7 @@ func main() {
 	}
 	defer client.Close()
 
-	model, err := core.GetModel(client, core.GenerativeModelConfig{
+	model, err := core.GetModel(client, TypeLeo.GenerativeModelConfig{
 		ModelName:       "gemini-2.0-flash-thinking-exp-1219",
 		Temperature:     0.5,
 		TopP:            0.95,
