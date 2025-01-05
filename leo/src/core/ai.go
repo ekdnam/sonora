@@ -4,50 +4,12 @@ import (
 	"context"
 	"fmt"
 	"leo/src/prompts"
+	TypeLeo "leo/src/typeLeo"
 	"leo/src/utils"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/iterator"
 )
-
-// GenerativeModelConfig defines the configuration parameters for a generative AI model.
-//
-// This struct encapsulates all the necessary parameters to configure and fine-tune
-// the behavior of a large language model for text generation tasks. It provides
-// control over both the model selection and its generation parameters.
-//
-// Fields:
-//   - ModelName: The identifier of the model to use (e.g., "gemini-1.5-flash")
-//   - Temperature: Controls randomness in generation (0.0-1.0). Higher values increase
-//     creativity while lower values make output more focused and deterministic
-//   - TopP: Nucleus sampling parameter (0.0-1.0). Filters out tokens below cumulative
-//     probability threshold, helping balance diversity and quality
-//   - TopK: Limits vocabulary to K most likely tokens. Lower values (e.g., 40)
-//     increase output reliability while higher values allow more diversity
-//   - MaxOutputTokens: Maximum length of generated response in tokens
-//   - SystemMessage: Optional context or instructions to guide model behavior
-//
-// Example usage:
-//
-//	config := GenerativeModelConfig{
-//	    ModelName: "gemini-1.5-flash",
-//	    Temperature: 0.7,
-//	    TopP: 0.95,
-//	    TopK: 40,
-//	    MaxOutputTokens: 1024,
-//	    SystemMessage: "You are a helpful assistant",
-//	}
-//
-// Note: The optimal values for temperature, topP, and topK depend on your specific
-// use case. Lower values generally produce more focused and deterministic output,
-// while higher values allow for more creativity and variation.
-type GenerativeModelConfig struct {
-	ModelName       string
-	Temperature     float32
-	TopP            float32
-	TopK            int32
-	MaxOutputTokens int32
-}
 
 // GetModel initializes and configures a generative AI model with the specified parameters.
 //
@@ -81,23 +43,15 @@ type GenerativeModelConfig struct {
 // Important: This function should be used as the standard way to obtain model
 // instances to ensure consistent configuration and validation across the codebase.
 // Direct model creation should be avoided to maintain reliability.
-func GetModel(client *genai.Client, config GenerativeModelConfig) (*genai.GenerativeModel, error) {
-	if !Constants.IsAllowedModel(config.ModelName) {
+func GetModel(client *genai.Client, config TypeLeo.GenerativeModelConfig) (*genai.GenerativeModel, error) {
+	if !utils.IsAllowedModel(config.ModelName) {
 		return nil, fmt.Errorf("invalid model name: %s. Allowed models: %v",
-			config.ModelName, Constants.GetAllModels())
+			config.ModelName, utils.GetAllModels())
 	}
 	// Add validation before creating model
-	if config.Temperature < Constants.MinTemperature || config.Temperature > Constants.MaxTemperature {
-		return nil, fmt.Errorf("temperature must be between %.1f and %.1f", Constants.MinTemperature, Constants.MaxTemperature)
-	}
-	if config.TopP < Constants.MinTopP || config.TopP > Constants.MaxTopP {
-		return nil, fmt.Errorf("topP must be between %.1f and %.1f", Constants.MinTopP, Constants.MaxTopP)
-	}
-	if config.TopK < Constants.MinTopK || config.TopK > Constants.MaxTopK {
-		return nil, fmt.Errorf("topK must be between %d and %d", Constants.MinTopK, Constants.MaxTopK)
-	}
-	if config.MaxOutputTokens < Constants.MinMaxOutputTokens || config.MaxOutputTokens > Constants.MaxMaxOutputTokens {
-		return nil, fmt.Errorf("maxOutputTokens must be between %d and %d", Constants.MinMaxOutputTokens, Constants.MaxMaxOutputTokens)
+	err := utils.ValidateConfig(config)
+	if err != nil {
+		return nil, err
 	}
 	model := client.GenerativeModel(config.ModelName)
 	model.SetTemperature(config.Temperature)
@@ -193,10 +147,64 @@ func GeneratePlan(ctx context.Context, model *genai.GenerativeModel, topic strin
 		Parts: []genai.Part{genai.Text(systemMessage)},
 		Role:  "user",
 	}
-	if !Constants.IsAllowedLevel(level) {
+	if !utils.IsAllowedLevel(level) {
 		return nil, fmt.Errorf("invalid level: %s. Allowed levels: %v",
-			level, Constants.GetAllLevels())
+			level, utils.GetAllLevels())
 	}
 	prompt := fmt.Sprintf("Topic: %s\nLevel: %s", topic, level)
+	return GenerateContent(ctx, model, prompt)
+}
+
+// GetIfCourseCanBeMade evaluates whether a given topic is suitable for a university-level STEM course.
+//
+// This function leverages a generative AI model to analyze a topic and determine if it meets
+// two key criteria:
+// 1. The topic must be STEM-related
+// 2. The topic must be specific enough to form the basis of a complete university course
+//
+// The function configures the model to return a structured JSON response with a boolean
+// indicating whether the topic is suitable. The response schema is strictly enforced to
+// ensure consistent output formatting.
+//
+// Args:
+//   - ctx: Context for managing timeouts and cancellation
+//   - model: A configured genai.GenerativeModel instance
+//   - topic: The subject matter to evaluate (e.g., "Machine Learning", "CPU Architecture")
+//
+// Returns:
+//   - *genai.GenerateContentResponse: Contains a JSON response in the format {"response": bool}
+//   - error: Any error encountered during the evaluation process
+//
+// Example usage:
+//
+//	resp, err := GetIfCourseCanBeMade(ctx, model, "Large Language Models")
+//	if err != nil {
+//	    log.Fatalf("Failed to evaluate topic: %v", err)
+//	}
+//
+// Note: The function uses a predefined system prompt (DetermineIfCourseCanBeMadeOnTopicPrompt)
+// that contains specific evaluation criteria and example responses. The model is configured
+// to return JSON to ensure consistent parsing of results.
+func ValidateTopic(ctx context.Context, model *genai.GenerativeModel, topic string) (*genai.GenerateContentResponse, error) {
+	systemMessage := prompts.ValidateTopicPrompt
+	model.ResponseMIMEType = "application/json"
+	model.ResponseSchema = TypeLeo.ValidateTopicSchema
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{genai.Text(systemMessage)},
+		Role:  "user",
+	}
+	prompt := fmt.Sprintf("Topic: %s\n", topic)
+	return GenerateContent(ctx, model, prompt)
+}
+
+func RecommendAlternateTopics(ctx context.Context, model *genai.GenerativeModel, topic string) (*genai.GenerateContentResponse, error) {
+	systemMessage := prompts.RecommendAlternateTopicsPrompt
+	model.ResponseMIMEType = "application/json"
+	model.ResponseSchema = TypeLeo.AlternateTopicsArraySchema
+	model.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{genai.Text(systemMessage)},
+		Role:  "user",
+	}
+	prompt := fmt.Sprintf("Topic: %s\n", topic)
 	return GenerateContent(ctx, model, prompt)
 }

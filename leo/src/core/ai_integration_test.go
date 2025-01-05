@@ -13,14 +13,14 @@ import (
 	"google.golang.org/api/option"
 )
 
-func TestGenerateContent_Integration(t *testing.T) {
-	// Skip if API key not set
+// setupTestModel creates and returns a configured test model
+func setupTestModel(t *testing.T) (*genai.GenerativeModel, context.Context, context.CancelFunc) {
 	apiKey, err := utils.LoadConfig("../../.env", "GEMINI_API_KEY")
 	if err != nil {
-		t.Errorf("GEMINI_API_KEY not set, skipping integration test. Error: %v", err)
+		t.Fatalf("GEMINI_API_KEY not set, skipping integration test. Error: %v", err)
 	}
 	if apiKey == "" {
-		t.Errorf("GEMINI_API_KEY not set, skipping integration test")
+		t.Fatal("GEMINI_API_KEY not set, skipping integration test")
 	}
 
 	ctx := context.Background()
@@ -31,12 +31,15 @@ func TestGenerateContent_Integration(t *testing.T) {
 	defer client.Close()
 
 	model := client.GenerativeModel("gemini-2.0-flash-exp")
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	return model, ctx, cancel
+}
 
-	t.Run("real API call", func(t *testing.T) {
-		// Add timeout to context
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
+func TestGenerateContent_Integration(t *testing.T) {
+	model, ctx, cancel := setupTestModel(t)
+	defer cancel()
 
+	t.Run("successful generation", func(t *testing.T) {
 		prompt := "What is 2+2?"
 		resp, err := GenerateContent(ctx, model, prompt)
 		t.Logf("Response: %v", resp)
@@ -59,10 +62,6 @@ func TestGenerateContent_Integration(t *testing.T) {
 	})
 
 	t.Run("with invalid prompt", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
-		// Empty prompt should cause an error
 		resp, err := GenerateContent(ctx, model, "")
 		t.Logf("Response: %v", resp)
 		if err == nil {
@@ -73,11 +72,13 @@ func TestGenerateContent_Integration(t *testing.T) {
 			t.Errorf("Expected nil response for error case, got %v", resp)
 		}
 	})
+}
+
+func TestGenerateContentStream_Integration(t *testing.T) {
+	model, ctx, cancel := setupTestModel(t)
+	defer cancel()
 
 	t.Run("stream response", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
 		prompt := "Count from 1 to 5 slowly"
 		resp, err := GenerateContentStream(ctx, model, prompt)
 
@@ -89,4 +90,41 @@ func TestGenerateContent_Integration(t *testing.T) {
 			t.Errorf("Expected nil response for streaming case, got %v", resp)
 		}
 	})
+}
+
+func TestValidateTopic_Integration(t *testing.T) {
+	model, ctx, cancel := setupTestModel(t)
+	defer cancel()
+
+	testCases := []struct {
+		topic string
+		state bool
+	}{
+		{"computers", false},
+		{"thermodynamics", true},
+		{"physics", false},
+		{"nonsense_1", false},
+		{"nonsense_2", false},
+	}
+
+	for _, tc := range testCases {
+		t.Run("topic: "+tc.topic, func(t *testing.T) {
+			resp, err := ValidateTopic(ctx, model, tc.topic)
+
+			if err != nil {
+				t.Errorf("Failed to generate content schema: %v", err)
+			}
+			if resp == nil {
+				t.Errorf("Expected non-nil response, got nil")
+			}
+			stringResponse := utils.ConvertFromResponseToString(resp)[0]
+			boolResponse, err := utils.ConvertFromStringToType(stringResponse, "bool")
+			if err != nil {
+				t.Errorf("Error while converting from string to bool for %s", stringResponse)
+			}
+			if boolResponse != tc.state {
+				t.Errorf("Topic %s : Expected - %v, got %v", tc.topic, tc.state, boolResponse)
+			}
+		})
+	}
 }
