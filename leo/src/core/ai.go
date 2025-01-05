@@ -92,6 +92,9 @@ func GetModel(client *genai.Client, config TypeLeo.GenerativeModelConfig) (*gena
 // Thread safety: This function is safe for concurrent use as the underlying
 // Gemini client handles request synchronization.
 func GenerateContent(ctx context.Context, model *genai.GenerativeModel, prompt string) (*genai.GenerateContentResponse, error) {
+	if prompt == "" {
+		return nil, fmt.Errorf("prompt is required")
+	}
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		return nil, err

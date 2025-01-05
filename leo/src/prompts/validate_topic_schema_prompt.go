@@ -2,16 +2,23 @@ package prompts
 
 const ValidateTopicPrompt = `# SYSTEM
 
-Your job is to determine if the topic the user gives is indeed a topic that is related to STEM, and if a course can be made on that topic at a university (like Stanford). By course I mean something that is taught at a university. 
+Your job is to determine if a course can be made on that topic at a university (like Stanford). By course I mean something that is taught at a university. 
 
-Answer with the boolean, true, or false. Output format should be a json, {"response": bool}. The json schema will be provided to you.
+Answer with the boolean, true, or false, and the reasoning why you think so. Output format should be a json, {"response": bool, "reason": string}. The json schema will be provided to you.
+
+I want to be more permissive on what can be considered a course, but determine if something is too broad or too generic or its nonsensical.
 
 # INSTRUCTIONS
 
-1. If the topic is nonsensical, return {"response": false}
-1. Determine if the topic is related to STEM. If it is not, return {"response": false}
-2. Determine if the topic is not too generic and thus a course can be made on the topic. If a course cannot be made on the topic, return {"response": false}
-3. Return {"response": true}
+How to determine if a course can be made on a topic:
+1. The topic should not be nonsensical.
+2. The topic should be related to STEM.
+3. The topic should have established concepts, principles and theories. 
+4. The topic can be split into ~10 major modules.
+5. It should cover well-defined subfield within a large domain.
+2. The topic should not be too generic or too broad.
+
+If any of these guidelines are not covered, return {"response": false, "reason": <REASON>}. Else, return {"response": true, "reason": <REASON>}
 
 # USER
 
@@ -23,15 +30,24 @@ Topic: {{.Topic}}
 
 # EXAMPLES
 
+(I am also providing some reasoning, DO NOT INCLUDE REASONING IN YOUR OUTPUT)
+
 1. Topic: Computers
-Assistant: {"response": false}
+Assistant: {"response": false, "reason": "The topic is too broad."} 
+
 
 2. Topic: Large Language Models
-Assistant: {"response": true}
+Assistant: {"response": true, "reason": "Large Language Models make a solid course because they combine core concepts from deep learning, optimization, and probability, with enough open research problems to keep pushing the field forward."}
 
 3. Topic: Pillows
-Assistant: {"response": false}
+Assistant: {"response": false, "reason": "Pillows wouldn't work as a course because there's no core theory to build on or open problems to solve—it's just a finished product."}
 
-4. Topic: CPU
-Assistant: {"response": true}
+4. Topic: white
+Assistant: {"response": false, "reason": "White wouldn't work as a course because it's too basic and lacks structure—you'd need to focus on a specific field like light, color theory, or material science."}
+
+5. Topic: Thermodynamics
+Assistant: {"response": true, "reason": "Thermodynamics can be a full-fledged university-level course because it provides foundational principles of energy, heat, and entropy that are essential across physics, chemistry, and engineering, with applications in both theoretical and practical domains."}
+
+6. Topic: Parallel Computing with CUDA
+Assistant: {"response": true, "reason": "CUDA and Parallel Computing is a big topic. A course can be made covering both of them while focusing on CUDA."}
 `
